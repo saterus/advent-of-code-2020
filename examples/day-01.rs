@@ -1,8 +1,7 @@
 use std::cmp::Ordering;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
 use std::str::FromStr;
+
+use advent_of_rust::load_file;
 
 fn main() {
     println!("Hello from day-01!");
@@ -22,15 +21,6 @@ fn main() {
         ),
         None => println!("No answer found. :("),
     }
-}
-
-fn load_file<P: AsRef<Path>>(path: P) -> Result<String, std::io::Error> {
-    let mut file = File::open(path)?;
-    let mut contents = String::new();
-
-    file.read_to_string(&mut contents)?;
-
-    Ok(contents)
 }
 
 fn parse_list(lines: &str) -> Result<Vec<i32>, std::io::Error> {
