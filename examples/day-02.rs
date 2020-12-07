@@ -30,21 +30,23 @@ enum PasswordRuleToken<'a> {
 
 #[derive(Debug, PartialEq, Eq)]
 struct PasswordRule<'l> {
-    min: u64,
-    max: u64,
+    first_spot: usize,
+    second_spot: usize,
     target_char: char,
     password: &'l str,
 }
 
 impl<'l> PasswordRule<'l> {
     fn is_valid(&self) -> bool {
-        let count = self
-            .password
-            .chars()
-            .filter(|c| *c == self.target_char)
-            .count() as u64;
+        let first_spot = self.password.chars().nth(self.first_spot);
+        let second_spot = self.password.chars().nth(self.second_spot);
 
-        count >= self.min && count <= self.max
+        match (first_spot, second_spot) {
+            (Some(x), Some(y)) if x == self.target_char && y == self.target_char => false,
+            (Some(x), _) if x == self.target_char => true,
+            (_, Some(x)) if x == self.target_char => true,
+            _ => false,
+        }
     }
 }
 
@@ -61,8 +63,8 @@ impl<'p, 'l: 'p> Parser<'p, 'l> {
     where
         'p: 'a,
     {
-        let min = if let Some(PasswordRuleToken::Number(min)) = self.lexer.next() {
-            min
+        let first_spot = if let Some(PasswordRuleToken::Number(n)) = self.lexer.next() {
+            (n - 1) as usize // these numbers represent one-based indexes
         } else {
             return Err("Expected the first password rule number!".to_string());
         };
@@ -73,8 +75,8 @@ impl<'p, 'l: 'p> Parser<'p, 'l> {
             return Err("Expected the dash!".to_string());
         };
 
-        let max = if let Some(PasswordRuleToken::Number(max)) = self.lexer.next() {
-            max
+        let second_spot = if let Some(PasswordRuleToken::Number(n)) = self.lexer.next() {
+            (n - 1) as usize // these numbers represent one-based indexes
         } else {
             return Err("Expected the second password rule number!".to_string());
         };
@@ -93,8 +95,8 @@ impl<'p, 'l: 'p> Parser<'p, 'l> {
         };
 
         Ok(PasswordRule {
-            min,
-            max,
+            first_spot: first_spot,
+            second_spot: second_spot,
             target_char,
             password,
         })
@@ -172,15 +174,15 @@ mod test {
 
         let rule = parser.parse_rule()?;
 
-        assert_eq!(rule.min, 1);
-        assert_eq!(rule.max, 3);
+        assert_eq!(rule.first_spot, 1);
+        assert_eq!(rule.second_spot, 3);
         assert_eq!(rule.target_char, 'a');
         assert_eq!(rule.password, "abcde");
 
         let rule2 = parser.parse_rule()?;
 
-        assert_eq!(rule2.min, 2);
-        assert_eq!(rule2.max, 4);
+        assert_eq!(rule2.first_spot, 2);
+        assert_eq!(rule2.second_spot, 4);
         assert_eq!(rule2.target_char, 'b');
         assert_eq!(rule2.password, "cdefg");
         Ok(())
