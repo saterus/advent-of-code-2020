@@ -61,10 +61,7 @@ impl Map {
         }
     }
 
-    fn toboggan_path(&self, start_x: usize, start_y: usize) -> Vec<Tile> {
-        let right_three = std::iter::successors(Some(start_x), |n| Some(n + 3));
-        let course = right_three.zip(start_y..);
-
+    fn toboggan_path(&self, course: &mut impl Iterator<Item = (usize, usize)>) -> Vec<Tile> {
         course
             .map(|(x, y)| self.tile_at(x, y))
             .skip(1)
@@ -84,6 +81,17 @@ impl Map {
     }
 }
 
+fn build_slope(delta_x: usize, delta_y: usize) -> impl Iterator<Item = (usize, usize)> {
+    let x = std::iter::successors(Some(0), move |n| Some(n + delta_x));
+    let y = std::iter::successors(Some(0), move |n| Some(n + delta_y));
+
+    x.zip(y)
+}
+
+fn count_trees(tiles: &[Tile]) -> usize {
+    tiles.iter().filter(|tile| **tile == Tile::Tree).count()
+}
+
 fn main() {
     println!("Hello from day-03!");
 
@@ -91,13 +99,21 @@ fn main() {
     let mut lexer = Tile::lexer(&file_contents);
     let map = Map::parse(&mut lexer);
 
-    let tree_count = map
-        .toboggan_path(0, 0)
-        .iter()
-        .filter(|tile| **tile == Tile::Tree)
-        .count();
+    let mut slopes_to_try = [
+        build_slope(1, 1),
+        build_slope(3, 1),
+        build_slope(5, 1),
+        build_slope(7, 1),
+        build_slope(1, 2),
+    ];
 
-    println!("Ouch. Hit {} trees on the way down.", tree_count);
+    let total_trees = slopes_to_try
+        .iter_mut()
+        .map(|slope| map.toboggan_path(slope))
+        .map(|path| count_trees(&path))
+        .product::<usize>();
+
+    println!("Ouch. Hit {} trees on the way down.", total_trees);
 }
 
 #[cfg(test)]
@@ -126,21 +142,22 @@ mod test {
         assert_eq!(map.height, 11);
         assert_eq!(map.width, 11);
 
-        assert_eq!(
-            vec![
-                Tile::Open,
-                Tile::Tree,
-                Tile::Open,
-                Tile::Tree,
-                Tile::Tree,
-                Tile::Open,
-                Tile::Tree,
-                Tile::Tree,
-                Tile::Tree,
-                Tile::Tree,
-            ],
-            map.toboggan_path(0, 0)
-        );
+        let expected = vec![
+            Tile::Open,
+            Tile::Tree,
+            Tile::Open,
+            Tile::Tree,
+            Tile::Tree,
+            Tile::Open,
+            Tile::Tree,
+            Tile::Tree,
+            Tile::Tree,
+            Tile::Tree,
+        ];
+
+        let actual = map.toboggan_path(&mut build_slope(3, 1));
+
+        assert_eq!(expected, actual);
     }
 
     #[test]
